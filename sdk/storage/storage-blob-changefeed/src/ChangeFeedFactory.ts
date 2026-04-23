@@ -85,7 +85,11 @@ export class ChangeFeedFactory {
       let cursor: ChangeFeedCursor | undefined = undefined;
       // Create cursor.
       if (continuationToken) {
-        cursor = JSON.parse(continuationToken);
+        try {
+          cursor = JSON.parse(continuationToken);
+        } catch {
+          throw new Error("Unable to parse continuation token");
+        }
         ChangeFeedFactory.validateCursor(containerClient, cursor!);
         options.start = parseDateFromSegmentPath(cursor!.CurrentSegmentCursor.SegmentPath!);
         options.end = new Date(cursor!.EndTime!);
@@ -126,10 +130,13 @@ export class ChangeFeedFactory {
           throw err;
         }
       }
-      const lastConsumable = new Date(
-        (JSON.parse(await bodyToString(blobDownloadRes)) as MetaSegments).lastConsumable,
-      );
-
+      const metaSegments = await bodyToString(blobDownloadRes);
+      let lastConsumable: Date | undefined = undefined;
+      try {
+        lastConsumable = new Date((JSON.parse(metaSegments) as MetaSegments).lastConsumable);
+      } catch {
+        throw new Error("Unable to parse segments metadata");
+      }
       // Get year paths
       const years: number[] = await getYearsPaths(containerClient, {
         abortSignal: options.abortSignal,

@@ -55,9 +55,12 @@ export class SegmentFactory {
         tracingOptions: updatedOptions.tracingOptions,
       });
       const blobContent: string = await bodyToString(blobDownloadRes);
-
-      const segmentManifest = JSON.parse(blobContent) as SegmentManifest;
-
+      let segmentManifest: SegmentManifest;
+      try {
+        segmentManifest = JSON.parse(blobContent) as SegmentManifest; // if this fails, it is probably due to blobContent being "" as the blob was a directory
+      } catch {
+        throw new Error("Unable to parse blob content as segment manifest.");
+      }
       const containerPrefixLength = CHANGE_FEED_CONTAINER_NAME.length + 1; // "$blobchangefeed/"
       for (const shardPath of segmentManifest.chunkFilePaths) {
         const shardPathSubStr = shardPath.substring(containerPrefixLength);
